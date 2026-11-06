@@ -10,6 +10,7 @@
 | `sync_shared.py` | 同步旧仓 Lua 表 + 配置表数据（`--config` 连 C# 表类），写 `sync-manifest.json`；`--check` 只比对 | 旧仓重新生成后 |
 | `build_lobby_prefab.cs` | 增量建 `Page_Lobby.prefab` 并追加 UIRoot 目录条目（不改 UIRoot GUID） | 改 Lobby 页骨架时 |
 | `build_ui_prefabs.cs` | 生成 UIRoot / LoadingScreen / ErrorScreen 预制体并接 Boot 场景；会先删后建，属资产可复现来源 | 改 UI 骨架时，经 Unity 内 `run_script` 执行 |
+| `import_old_assets.py` | 按 GUID 闭包从旧仓导入美术资产（不导旧代码；目标 `Assets/Imported` 不入库） | 需要旧仓模型/材质/动画时 |
 | `config_digest.py` | 独立复算玩法数据摘要（解析 `ConfigTableLayout` 清单，Python SHA-256） | 表数据变更后核对黄金值 |
 | `naming-exceptions.json` | 命名例外登记（`verify.py` 读取） | 需要命名偏离时 |
 

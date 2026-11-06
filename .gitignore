@@ -33,6 +33,9 @@ LocalNotes/
 Assets/ThirdParty/
 # 开源参考仓库（只读对照，Unity 不导入；见 Tools/README.md）
 ThirdParty/
+# 从旧仓按依赖闭包导入的美术资产（Unity 会导入，但不入库；用 Tools/import_old_assets.py 还原）
+Assets/Imported/
+Assets/Imported.meta
 Assets/ThirdParty.meta
 Assets/Plugins/
 Assets/Plugins.meta
