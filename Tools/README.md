@@ -12,7 +12,8 @@
 | `build_ui_prefabs.cs` | 生成 UIRoot / LoadingScreen / ErrorScreen 预制体并接 Boot 场景；会先删后建，属资产可复现来源 | 改 UI 骨架时，经 Unity 内 `run_script` 执行 |
 | `import_old_assets.py` | 按 GUID 闭包从旧仓导入美术资产（目录参数=整树导入，供 shader include；不导旧代码；目标 `Assets/Imported` 不入库） | 需要旧仓模型/材质/动画时 |
 | `imported_sanitizer.cs` | 清导入预制体里指向旧脚本的 Missing MonoBehaviour | 每次导入角色/环境后 |
-| `build_battle_scene.cs` | 用旧仓训练场 + `Player(Rifle)` + Cinemachine 生成 `Battle.unity` | 重建战斗场景时 |
+| `build_battle_scene.cs` | 用旧仓训练场 + `Player(Rifle)` + Cinemachine 生成 `Battle.unity`（挂控制器与 `CharacterView`） | 重建战斗场景时 |
+| `build_character_animator.cs` | 按 01 §9.3.1 参数契约从 RifleGirl FBX 生成 `RifleGirl.controller` | 改动画状态/参数时 |
 | `config_digest.py` | 独立复算玩法数据摘要（解析 `ConfigTableLayout` 清单，Python SHA-256） | 表数据变更后核对黄金值 |
 | `naming-exceptions.json` | 命名例外登记（`verify.py` 读取） | 需要命名偏离时 |
 

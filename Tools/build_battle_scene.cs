@@ -50,6 +50,18 @@ public static class BattleSceneBuilder
         var composer = vcam.AddCinemachineComponent<CinemachineComposer>();
         composer.m_TrackedObjectOffset = new Vector3(0f, 1.4f, 0f);
 
+        var animator = player.GetComponent<Animator>();
+        var controller = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>("Assets/Content/Animators/RifleGirl.controller");
+        if (animator != null && controller != null)
+        {
+            animator.runtimeAnimatorController = controller;
+        }
+
+        if (player.GetComponent<CharacterView>() == null)
+        {
+            player.AddComponent<CharacterView>();
+        }
+
         var sampler = player.GetComponent<InputSampler>();
         if (sampler == null)
         {
