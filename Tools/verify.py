@@ -543,15 +543,15 @@ def check_build() -> Result:
 
 def check_shared() -> Result:
     r = Result("shared")
-    manifest = ROOT / "Assets" / "GameData" / ".synced.json"
+    manifest = ROOT / "Tools" / "sync-manifest.json"
     if not manifest.exists():
-        r.note("跳过：Assets/GameData/.synced.json 尚未生成（02 §6.2）")
+        r.note("跳过：Tools/sync-manifest.json 尚未生成（02 §6.2）")
         return r
     import hashlib
 
     recorded = json.loads(read_text(manifest))
     for name, digest in recorded.items():
-        path = ROOT / "Assets" / "GameData" / name
+        path = ROOT / name
         if not path.exists():
             r.fail(name, "同步清单里的文件缺失，跑 python Tools/sync_shared.py")
             continue

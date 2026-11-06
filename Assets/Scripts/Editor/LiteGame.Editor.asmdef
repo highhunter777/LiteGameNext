@@ -1,0 +1,19 @@
+{
+    "name": "LiteGame.Editor",
+    "rootNamespace": "LiteGame.EditorTools",
+    "references": [
+        "LiteGame.Core",
+        "LiteGame.Game"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
