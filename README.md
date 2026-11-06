@@ -25,6 +25,8 @@ LiteGame 客户端的**重写工程**：服务端与共享判定/协议/同步�
 | 4 | [04 客户端迁移演进路线图](Docs/设计文档/04-客户端迁移演进路线图.md) | 旧→新逐项映射（移植/重写/废弃）、P0–P4 阶段与退出条件、风险 |
 | — | [迁移进度](Docs/进度/迁移进度.md) | 实际做到哪一步（唯一状态来源） |
 
+**规则入口**：[AGENTS.md](AGENTS.md)（机检 7 条 + 评审 4 条 + 流程 3 条）；门禁：`python Tools/verify.py`。
+
 ## 三条不可协商的约束
 
 1. **共享包只读**：`com.litegame.sim` / `com.litegame.net` / `com.litegame.sync` 原样消费。改了它们等于改服务端协议与确定性判定，必须回旧仓走 `toolbox.py build-hash` 流程。

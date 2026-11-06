@@ -33,6 +33,10 @@ LocalNotes/
 Assets/ThirdParty/
 Assets/Plugins/
 
+# ----- 开发工具：Unity Pipeline（Unity 官方包 + 旧仓 2022.3 兼容补丁，13.4 MB；版权件不入库）-----
+# 新克隆/换机：python Tools/restore_pipeline.py
+Packages/com.unity.pipeline/
+
 # ----- IDE / 编辑器 -----
 .vs/
 .idea/

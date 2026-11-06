@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""LiteGameNext 静态门禁：六项检查。
+"""LiteGameNext 静态门禁：七项检查。
 
 默认全跑；也可只跑单项（可组合）：
 
@@ -9,14 +9,17 @@
     python Tools/verify.py --json
     python Tools/verify.py --build      # 追加 dotnet build/test（工程存在时，否则跳过）
     python Tools/verify.py --shared     # 追加共享生成物哈希比对（.synced.json 存在时，否则跳过）
+    python Tools/verify.py --pipeline   # 追加 unity-pipeline 安装检查（02 §5.1）
 
 退出码：0 全绿 / 1 有违规 / 2 用法错误。
-规则权威：AGENTS.md（机检 6 条）与 Docs/设计文档/01~04；本文件只实现判据，不新增规则。
+规则权威：AGENTS.md（机检 7 条）与 Docs/设计文档/01~04；本文件只实现判据，不新增规则。
 """
 
 import argparse
+import fnmatch
 import json
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -57,6 +60,33 @@ TEXT_EXTENSIONS = {".cs", ".json", ".md", ".py", ".txt", ".yml", ".yaml", ".asmd
 
 # ---- 文档 ----
 DESIGN_STATUS_WORDS = re.compile(r"已交付|已实施|待提交|批次[A-Z0-9]|施工记录")
+
+# ---- 命名（02 §3.1）----
+PASCAL = re.compile(r"^[A-Z][A-Za-z0-9]*$")
+PRIVATE_FIELD = re.compile(r"^_[a-z][A-Za-z0-9]*$")
+NAMING_BANNED = ("Mgr", "Helper", "Utils", "Common", "Tmp", "Foo", "Bar", "Baz", "Dummy")
+ASYNC_RETURNS = {"UniTask", "Task", "ValueTask"}
+NAMESPACE_LINE = re.compile(r"^\s*namespace\s+([A-Za-z0-9_.]+)")
+TYPE_LINE = re.compile(
+    r"^\s*(?:(?:public|private|protected|internal|static|sealed|abstract|partial|unsafe|new|readonly)\s+)*"
+    r"(class|struct|record|interface|enum)\s+([A-Za-z_]\w*)"
+)
+METHOD_LINE = re.compile(
+    r"^\s*(?:public|private|protected|internal)\s+"
+    r"(?:(?:static|virtual|override|sealed|abstract|async|extern|unsafe|new|partial|readonly)\s+)*"
+    r"([A-Za-z_][\w<>\[\],\.\?]*)\s+([A-Za-z_]\w*)\s*\("
+)
+FIELD_LINE = re.compile(
+    r"^\s*(public|private|protected|internal)\s+"
+    r"((?:(?:static|readonly|const|volatile|unsafe|new|required)\s+)*)"
+    r"([A-Za-z_][\w<>\[\],\.\?]*)\s+([A-Za-z_]\w*)\s*(?:=[^;]*)?;"
+)
+PROPERTY_LINE = re.compile(
+    r"^\s*(?:public|private|protected|internal)\s+"
+    r"(?:(?:static|virtual|override|sealed|abstract|new|required)\s+)*"
+    r"[A-Za-z_][\w<>\[\],\.\?]*\s+([A-Za-z_]\w*)\s*\{\s*(?:get|set)"
+)
+CONST_LINE = re.compile(r"^\s*const\s+[A-Za-z_][\w<>\[\],\.\?]*\s+([A-Za-z_]\w*)")
 
 
 # ============================================================
@@ -208,7 +238,7 @@ def check_structure() -> Result:
             if path.is_dir():
                 dirs += 1
                 if path.name.lower() in FORBIDDEN_DIRS:
-                    r.fail(rel(path) + "/", f"禁用目录名 {path.name}（接口与实现同目录，02 §3.3）")
+                    r.fail(rel(path) + "/", f"禁用目录名 {path.name}（接口与实现同目录，02 §3.4）")
 
     calls = 0
     for path in iter_files(SCRIPTS, {".cs"}):
@@ -371,6 +401,126 @@ def check_docs() -> Result:
 
 
 # ============================================================
+# 7 命名（02 §3.1）
+# ============================================================
+
+def load_naming_exceptions(result: Result):
+    path = ROOT / "Tools" / "naming-exceptions.json"
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(read_text(path))
+    except json.JSONDecodeError as exc:
+        result.fail(rel(path), f"不是合法 JSON：{exc}")
+        return []
+    entries = []
+    for index, raw in enumerate(data if isinstance(data, list) else []):
+        where = f"{rel(path)}#{index}"
+        if not isinstance(raw, dict) or not raw.get("file") or not raw.get("rule"):
+            result.fail(where, "例外条目必须有 file 与 rule")
+            continue
+        if not raw.get("reason") or not raw.get("approvedBy"):
+            result.fail(where, "例外必须是「审批」：缺 reason 或 approvedBy")
+            continue
+        entries.append({"raw": raw, "used": False, "where": where})
+    return entries
+
+
+def check_naming() -> Result:
+    r = Result("naming")
+    entries = load_naming_exceptions(r)
+    checked = 0
+
+    def add(rule, symbol, where, message):
+        path_text = where.split(":", 1)[0]
+        for entry in entries:
+            raw = entry["raw"]
+            if raw["rule"] != rule:
+                continue
+            if raw.get("symbol") and raw["symbol"] != symbol:
+                continue
+            if fnmatch.fnmatch(path_text, raw["file"]):
+                entry["used"] = True
+                return
+        r.fail(where, f"{rule}: {message}")
+
+    for path in iter_files(SCRIPTS, {".cs"}):
+        checked += 1
+        text = read_text(path)
+        name_path = rel(path)
+        first_type = None
+
+        for number, line in enumerate(text.splitlines(), start=1):
+            here = f"{name_path}:{number}"
+
+            match = NAMESPACE_LINE.match(line)
+            if match:
+                for segment in match.group(1).split("."):
+                    if not PASCAL.match(segment):
+                        add("namespace", segment, here, f"命名空间段 `{segment}` 应 PascalCase")
+                continue
+
+            match = TYPE_LINE.match(line)
+            if match:
+                kind, symbol = match.group(1), match.group(2)
+                first_type = first_type or symbol
+                if kind == "interface":
+                    if not (symbol.startswith("I") and len(symbol) > 1 and PASCAL.match(symbol[1:])):
+                        add("interface", symbol, here, f"接口 `{symbol}` 应为 I + PascalCase")
+                else:
+                    banned = [word for word in NAMING_BANNED if word in symbol]
+                    if not PASCAL.match(symbol) or banned:
+                        add("type", symbol, here, f"类型 `{symbol}` 应为 PascalCase 且禁用 {banned or '下划线/小写'}")
+                continue
+
+            match = METHOD_LINE.match(line)
+            if match:
+                returns, symbol = match.group(1), match.group(2)
+                if not PASCAL.match(symbol):
+                    add("method", symbol, here, f"方法 `{symbol}` 应 PascalCase")
+                base = returns.split("<")[0].split(".")[-1]
+                if base in ASYNC_RETURNS and not symbol.endswith("Async"):
+                    add("async", symbol, here, f"返回 {base} 的方法 `{symbol}` 应以 Async 结尾")
+                continue
+
+            match = PROPERTY_LINE.match(line)
+            if match:
+                symbol = match.group(1)
+                if not PASCAL.match(symbol):
+                    add("field", symbol, here, f"属性 `{symbol}` 应 PascalCase")
+                continue
+
+            match = CONST_LINE.match(line)
+            if match:
+                symbol = match.group(1)
+                if not PASCAL.match(symbol):
+                    add("const", symbol, here, f"常量 `{symbol}` 应 PascalCase（不用 UPPER_SNAKE）")
+                continue
+
+            match = FIELD_LINE.match(line)
+            if match:
+                access, modifiers, symbol = match.group(1), match.group(2), match.group(4)
+                if "const" in modifiers:
+                    if not PASCAL.match(symbol):
+                        add("const", symbol, here, f"常量 `{symbol}` 应 PascalCase（不用 UPPER_SNAKE）")
+                elif access == "public":
+                    if not PASCAL.match(symbol):
+                        add("field", symbol, here, f"public 字段 `{symbol}` 应 PascalCase（优先用属性）")
+                elif not PRIVATE_FIELD.match(symbol):
+                    add("field", symbol, here, f"私有字段 `{symbol}` 应为 _camelCase")
+
+        if first_type and path.stem != first_type:
+            add("file", first_type, f"{name_path}:1", f"文件名应等于首类型名 `{first_type}`（一文件一类型）")
+
+    for entry in entries:
+        if not entry["used"]:
+            r.fail(entry["where"], "过期例外：没有匹配任何违规，删掉（02 §3.1.2）")
+
+    r.note(f"{checked} 个 .cs；例外 {len(entries)} 条")
+    return r
+
+
+# ============================================================
 # 可选：构建/测试 与 共享生成物哈希
 # ============================================================
 
@@ -412,6 +562,30 @@ def check_shared() -> Result:
     return r
 
 
+def check_pipeline() -> Result:
+    r = Result("pipeline")
+    package = ROOT / "Packages" / "com.unity.pipeline"
+    required = (
+        "package.json",
+        "Editor/Unity.Pipeline.Editor.asmdef",
+        "Runtime/Unity.Pipeline.asmdef",
+        "Editor/AnalyticInfoCompat_2022.cs",
+    )
+    if not package.exists():
+        r.fail("Packages/com.unity.pipeline/", "缺失：python Tools/restore_pipeline.py（02 §5.1）")
+    else:
+        for item in required:
+            if not (package / item).exists():
+                r.fail(f"Packages/com.unity.pipeline/{item}", "包不完整，重跑 restore_pipeline.py")
+
+    if not shutil.which("unity"):
+        r.fail("unity CLI", "不在 PATH：需安装 unity-pipeline CLI，否则无法驱动编辑器（02 §5.1）")
+
+    if r.ok:
+        r.note("包已就位（官方 0.7.0-exp.1 + 2022.3 补丁）；CLI 在 PATH")
+    return r
+
+
 # ============================================================
 # 入口
 # ============================================================
@@ -420,11 +594,12 @@ CHECKS = (
     ("budget", check_budget),
     ("layers", check_layers),
     ("structure", check_structure),
+    ("naming", check_naming),
     ("hygiene", check_hygiene),
     ("comments", check_comments),
     ("docs", check_docs),
 )
-OPTIONAL = (("build", check_build), ("shared", check_shared))
+OPTIONAL = (("build", check_build), ("shared", check_shared), ("pipeline", check_pipeline))
 
 
 def main(argv=None) -> int:
