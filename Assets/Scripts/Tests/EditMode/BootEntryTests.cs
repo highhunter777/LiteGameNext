@@ -98,6 +98,10 @@ namespace LiteGame.Tests.EditMode
             {
             }
 
+            public void HandleBack()
+            {
+            }
+
             public void Dispose()
             {
             }

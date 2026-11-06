@@ -24,5 +24,8 @@ namespace LiteGame.Core.Logging
 
         /// <summary>UI 层：页面栈与页面宿主。</summary>
         Ui,
+
+        /// <summary>配置装载与表数据。</summary>
+        Config,
     }
 }

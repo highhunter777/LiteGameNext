@@ -3,7 +3,9 @@
     "rootNamespace": "LiteGame.Core",
     "references": [
         "UniTask",
-        "xLuaMain"
+        "xLuaMain",
+        "Luban.Runtime",
+        "LiteSim"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -24,6 +24,7 @@ DEFAULT_SOURCE = ROOT.parent / "Test" / "Assets" / "ThirdParty"
 ITEMS = (
     Path("Plugins") / "UniTask",
     Path("Plugins") / "x86_64",   # xLua 原生库（xlua.dll / libxlua.so）；漏了它 LuaEnv 构造会 DllNotFoundException
+    Path("Plugins") / "Demigiant",  # DOTween（DLL 形态：预编译程序集，asmdef 无需引用）
     Path("XLua"),
 )
 

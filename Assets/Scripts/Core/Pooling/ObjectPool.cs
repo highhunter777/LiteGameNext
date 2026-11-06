@@ -12,6 +12,7 @@ namespace LiteGame.Core.Pooling
         private readonly Action<T> _onReturn;
         private readonly Action<T> _onDiscard;
         private readonly Stack<T> _idle;
+        private readonly HashSet<T> _rented;
 
         private bool _disposed;
 
@@ -34,6 +35,7 @@ namespace LiteGame.Core.Pooling
             _onReturn = onReturn;
             _onDiscard = onDiscard;
             _idle = new Stack<T>(maxIdle);
+            _rented = new HashSet<T>(ReferenceComparer.Instance);
             MaxIdle = maxIdle;
         }
 
@@ -41,12 +43,13 @@ namespace LiteGame.Core.Pooling
 
         public int IdleCount => _idle.Count;
 
-        /// <summary>取件：命中复用，未命中调用工厂；返回前执行 onRent。工厂返回 null 视为缺陷。</summary>
+        /// <summary>取件：命中复用，未命中调用工厂；计入在租集合后执行 onRent。工厂返回 null 视为缺陷。</summary>
         public T Rent()
         {
             ThrowIfDisposed();
 
             var item = _idle.Count > 0 ? _idle.Pop() : Create();
+            _rented.Add(item);
             _onRent?.Invoke(item);
             return item;
         }
@@ -72,7 +75,14 @@ namespace LiteGame.Core.Pooling
             }
         }
 
-        /// <summary>归还：满员交给 onDiscard；重复归还不检测，由调用方保证一次。</summary>
+        /// <summary>查询实例是否在本池租出中；归还后为 false（给表现层断言用，null 视为 false）。</summary>
+        public bool IsRented(T item)
+        {
+            ThrowIfDisposed();
+            return item != null && _rented.Contains(item);
+        }
+
+        /// <summary>归还：未租出/已归还/重复归还一律抛；满员交给 onDiscard。</summary>
         public void Return(T item)
         {
             ThrowIfDisposed();
@@ -80,6 +90,11 @@ namespace LiteGame.Core.Pooling
             if (item == null)
             {
                 throw new ArgumentNullException(nameof(item));
+            }
+
+            if (!_rented.Remove(item))
+            {
+                throw new InvalidOperationException("归还了未租出或已归还的对象");
             }
 
             if (_idle.Count >= MaxIdle)
@@ -106,6 +121,22 @@ namespace LiteGame.Core.Pooling
                 // 先出栈再回调：空条件调用会跳过参数求值，写成 ?.Invoke(_idle.Pop()) 会死循环。
                 var item = _idle.Pop();
                 _onDiscard?.Invoke(item);
+            }
+        }
+
+        /// <summary>引用语义比较：T 覆写 Equals 也不影响“同一实例”判定。</summary>
+        private sealed class ReferenceComparer : IEqualityComparer<T>
+        {
+            public static readonly ReferenceComparer Instance = new ReferenceComparer();
+
+            public bool Equals(T x, T y)
+            {
+                return ReferenceEquals(x, y);
+            }
+
+            public int GetHashCode(T obj)
+            {
+                return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj);
             }
         }
 

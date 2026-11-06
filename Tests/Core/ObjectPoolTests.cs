@@ -124,6 +124,50 @@ namespace LiteGame.Tests.Core
         }
 
         [Fact]
+        public void Return_NeverRented_Throws()
+        {
+            var pool = new ObjectPool<object>(() => new object());
+
+            Assert.Throws<InvalidOperationException>(() => pool.Return(new object()));
+            pool.Dispose();
+        }
+
+        [Fact]
+        public void Return_Twice_Throws()
+        {
+            var pool = new ObjectPool<object>(() => new object());
+            var item = pool.Rent();
+            pool.Return(item);
+
+            Assert.Throws<InvalidOperationException>(() => pool.Return(item));
+            pool.Dispose();
+        }
+
+        [Fact]
+        public void IsRented_ReflectsRentAndReturn()
+        {
+            var pool = new ObjectPool<object>(() => new object());
+            var item = pool.Rent();
+
+            Assert.True(pool.IsRented(item));
+
+            pool.Return(item);
+
+            Assert.False(pool.IsRented(item));
+            pool.Dispose();
+        }
+
+        [Fact]
+        public void IsRented_NeverRentedOrNull_IsFalse()
+        {
+            var pool = new ObjectPool<object>(() => new object());
+
+            Assert.False(pool.IsRented(new object()));
+            Assert.False(pool.IsRented(null));
+            pool.Dispose();
+        }
+
+        [Fact]
         public void Ctor_InvalidArguments_Throw()
         {
             Assert.Throws<ArgumentNullException>(() => new ObjectPool<object>(null));
@@ -144,6 +188,7 @@ namespace LiteGame.Tests.Core
             Assert.Throws<ObjectDisposedException>(() => pool.Rent());
             Assert.Throws<ObjectDisposedException>(() => pool.Return(new object()));
             Assert.Throws<ObjectDisposedException>(() => pool.Prewarm(1));
+            Assert.Throws<ObjectDisposedException>(() => pool.IsRented(new object()));
         }
     }
 }

@@ -11,15 +11,13 @@ namespace LiteGame.Core.Lua
         private const float UpdateStep = 0.1f;
 
         private readonly string _script;
-        private readonly LuaPageProxy _proxy;
         private LuaTable _table;
         private bool _broken;
         private float _accumulator;
 
-        private LuaPage(string script, LuaPageProxy proxy, LuaTable table)
+        private LuaPage(string script, LuaTable table)
         {
             _script = script;
-            _proxy = proxy;
             _table = table;
         }
 
@@ -54,7 +52,7 @@ namespace LiteGame.Core.Lua
                     return null;
                 }
 
-                return new LuaPage(script, proxy, table);
+                return new LuaPage(script, table);
             }
             catch (Exception exception)
             {
@@ -88,7 +86,6 @@ namespace LiteGame.Core.Lua
                 return;
             }
 
-            _proxy.Tick(deltaSeconds);
             _accumulator += deltaSeconds;
             if (_accumulator < UpdateStep)
             {

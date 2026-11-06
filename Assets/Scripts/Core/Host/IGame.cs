@@ -10,5 +10,8 @@ namespace LiteGame.Core.Host
         UniTask StartAsync(CancellationToken token);
 
         void Tick(float deltaSeconds);
+
+        /// <summary>返回键：宿主读输入后转发，页面栈自行决定退到哪。</summary>
+        void HandleBack();
     }
 }

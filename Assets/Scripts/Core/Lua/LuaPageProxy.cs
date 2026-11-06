@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DG.Tweening;
 using LiteGame.Core.Logging;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,14 +8,13 @@ using UnityEngine.UI;
 namespace LiteGame.Core.Lua
 {
     /// <summary>注入 Lua 页的 self.ui：按 key 找控件，缺件/类型不符只告警一次并按 no-op 降级。
-    /// 控件解析由宿主注入委托，本类不依赖 UI 层；复合控件见部分类。</summary>
+    /// 控件解析由宿主注入委托；动效走 DOTween（独立更新，不受 timeScale 影响）。</summary>
     public sealed partial class LuaPageProxy
     {
         private readonly Func<string, Component> _resolve;
         private readonly Func<string, string> _textOf;
         private readonly string _page;
         private readonly HashSet<string> _warned = new HashSet<string>(StringComparer.Ordinal);
-        private readonly List<Effect> _effects = new List<Effect>();
 
         public LuaPageProxy(Func<string, Component> resolve, string page, Func<string, string> textOf = null)
         {
@@ -72,7 +72,7 @@ namespace LiteGame.Core.Lua
             }
         }
 
-        /// <summary>闪一下：要求节点上有 CanvasGroup（没有则告警一次）。</summary>
+        /// <summary>闪一下：要求节点上有 CanvasGroup（没有则告警一次）；重复调用先杀掉旧动画。</summary>
         public void Flash(string id)
         {
             var component = Resolve(id);
@@ -83,8 +83,11 @@ namespace LiteGame.Core.Lua
                 return;
             }
 
-            _effects.RemoveAll(effect => effect.Group == group);
-            _effects.Add(Effect.ForFlash(group, 0.18f));
+            DOTween.Kill(group);
+            group.alpha = 1f;
+            // CanvasGroup.DOFade 在 DOTween.Modules（需额外 asmdef 引用），这里用核心 API 等价实现。
+            DOTween.To(() => group.alpha, value => group.alpha = value, 0.35f, 0.09f)
+                .SetLoops(2, LoopType.Yoyo).SetEase(Ease.OutQuad).SetUpdate(true);
         }
 
         public void Pulse(string id)
@@ -96,47 +99,9 @@ namespace LiteGame.Core.Lua
             }
 
             var target = component.transform;
-            _effects.RemoveAll(effect => effect.Transform == target);
-            _effects.Add(Effect.ForPulse(target, 0.2f));
-        }
-
-        /// <summary>由宿主每帧推进（Lua 页 OnUpdate 之前）。</summary>
-        public void Tick(float deltaSeconds)
-        {
-            for (var i = _effects.Count - 1; i >= 0; i--)
-            {
-                var effect = _effects[i];
-                effect.Elapsed += deltaSeconds;
-                var progress = Mathf.Clamp01(effect.Elapsed / effect.Duration);
-                var wave = Mathf.Sin(Mathf.PI * progress);
-                if (effect.Group != null)
-                {
-                    effect.Group.alpha = 1f - 0.6f * wave;
-                }
-
-                if (effect.Transform != null)
-                {
-                    effect.Transform.localScale = Vector3.one * (effect.BaseScale * (1f + 0.12f * wave));
-                }
-
-                if (progress >= 1f)
-                {
-                    if (effect.Group != null)
-                    {
-                        effect.Group.alpha = 1f;
-                    }
-
-                    if (effect.Transform != null)
-                    {
-                        effect.Transform.localScale = Vector3.one * effect.BaseScale;
-                    }
-
-                    _effects.RemoveAt(i);
-                    continue;
-                }
-
-                _effects[i] = effect;
-            }
+            DOTween.Kill(target);
+            var scale = target.localScale;
+            target.DOScale(scale * 1.12f, 0.1f).SetLoops(2, LoopType.Yoyo).SetEase(Ease.OutQuad).SetUpdate(true);
         }
 
         private Component Resolve(string id)
@@ -168,39 +133,6 @@ namespace LiteGame.Core.Lua
             if (_warned.Add((key ?? string.Empty) + "|" + what))
             {
                 Log.Warning(what + "：" + _page + "/" + key, LogTag.Lua);
-            }
-        }
-
-        private struct Effect
-        {
-            private CanvasGroup _group;
-            private Transform _transform;
-            private float _duration;
-            private float _elapsed;
-            private float _baseScale;
-
-            public CanvasGroup Group => _group;
-
-            public Transform Transform => _transform;
-
-            public float Duration => _duration;
-
-            public float Elapsed
-            {
-                get => _elapsed;
-                set => _elapsed = value;
-            }
-
-            public float BaseScale => _baseScale;
-
-            public static Effect ForFlash(CanvasGroup group, float duration)
-            {
-                return new Effect { _group = group, _duration = duration, _baseScale = 1f };
-            }
-
-            public static Effect ForPulse(Transform target, float duration)
-            {
-                return new Effect { _transform = target, _duration = duration, _baseScale = target.localScale.x };
             }
         }
     }

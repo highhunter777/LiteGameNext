@@ -36,6 +36,8 @@
 | `LuaCallback` | `Core/Lua` | ≤ 80 | C# → Lua 回调：主线程、pcall、页面 token 校验、异常日志一次 |
 | `LuaScreen`（MonoBehaviour） | `Game/Ui` | ≤ 80 | 预制体上的 Lua 页宿主：建 `LuaPage`、转发 `OnShow/OnReveal/OnHide/OnUpdate` |
 
+页面动效（`Flash` / `Pulse`）走 DOTween（预编译 DLL，Core 无需 asmdef 引用，`SetUpdate(true)` 不受 timeScale 影响）；不做自研 tween 系统。
+
 **没有**：三张注册表、`RegistryFiller`、`LuaRegistryRefillService`、`LuaBehaviourAdapter`（257 行 + 生成 54 行）、`UIApiShim` 生成物、静态门面 `Bind(...)` 链。旧这套的价值是"环境重建后按表补注册"；新工程整包重载（§7），不需要增删注册。
 
 启动时序（`Boot` 态内，一次）：

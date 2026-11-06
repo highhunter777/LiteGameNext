@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using LiteGame.Boot.States;
+using LiteGame.Core.Config;
 using LiteGame.Core.Events;
 using LiteGame.Core.Host;
 using LiteGame.Core.Logging;
@@ -63,6 +65,7 @@ namespace LiteGame.Boot
             }
 
             var lua = new LuaHost(config.LuaRoot);
+            var configHost = new ConfigHost(ReadConfigBytes);
             var ui = UiHost.Create(host.UiRootPrefab);
             ui.Initialize(lua);
 
@@ -70,7 +73,7 @@ namespace LiteGame.Boot
             Action<AppState> request = state => game?.RequestState(state);
             var flow = new AppFlow(new Dictionary<AppState, IAppState>
             {
-                { AppState.Boot, new BootState(lua, ui, request) },
+                { AppState.Boot, new BootState(lua, ui, request, configHost) },
                 { AppState.Patch, new PatchState() },
                 { AppState.Login, new LoginState() },
                 { AppState.Lobby, new LobbyState(ui) },
@@ -82,6 +85,19 @@ namespace LiteGame.Boot
 
             game = new Game(host, new GameClock(), new FixedStep(), new EventBus(), new LocalStore(), lua, ui, flow);
             return game;
+        }
+
+        /// <summary>P1 从工程内读表（编辑期路径）；Player 内容管线在 P3 接管。</summary>
+        private static byte[] ReadConfigBytes(string location)
+        {
+            var relative = location.StartsWith("Assets/", StringComparison.Ordinal) ? location.Substring(7) : location;
+            var path = Path.Combine(UnityEngine.Application.dataPath, relative);
+            if (!File.Exists(path))
+            {
+                throw new FileNotFoundException("配置表缺失：" + location, path);
+            }
+
+            return File.ReadAllBytes(path);
         }
 
         public async UniTask StartAsync(CancellationToken token)
@@ -117,6 +133,17 @@ namespace LiteGame.Boot
         }
 
         /// <summary>状态/页面的切态请求；由 Tick 统一交给 AppFlow（唯一写者）。</summary>
+        /// <summary>返回键：只退页面栈；空栈或已释放时无操作。</summary>
+        public void HandleBack()
+        {
+            if (_disposed || Ui.Screens == null)
+            {
+                return;
+            }
+
+            Ui.Screens.BackAsync().Forget(exception => Log.Error(exception, LogTag.Ui));
+        }
+
         public void RequestState(AppState next)
         {
             if (_disposed)

@@ -21,6 +21,7 @@ MANIFEST = ROOT / "Tools" / "sync-manifest.json"
 
 # 源目录（旧仓相对） → 目标目录（本工程相对）
 LUA = ("Assets/LiteGame/Lua/Cfg", "Assets/Scripts/Lua/cfg")
+DATA = ("Assets/GameData/Config", "Assets/GameData/Config")
 CONFIG = ("Assets/GameData/Generated", "Assets/Scripts/Core/Config/Generated")
 
 
@@ -33,7 +34,9 @@ def sha256(path: Path) -> str:
 def collect(source: Path):
     if not source.exists():
         return []
-    return sorted(p for p in source.rglob("*") if p.is_file() and p.suffix != ".meta")
+    # 跳过 .meta（Unity 按目标工程重新生成）与 .asmdef（生成物并入 LiteGame.Core，asmdef 预算固定 5 个）
+    return sorted(p for p in source.rglob("*")
+                  if p.is_file() and p.suffix not in (".meta", ".asmdef"))
 
 
 def sync_pair(source_rel, target_rel, check_only):
@@ -80,7 +83,7 @@ def main() -> int:
         print(f"旧仓不存在：{OLD_REPO}（02 §6.2 要求同级目录）")
         return 1
 
-    pairs = [LUA] + ([CONFIG] if args.config else [])
+    pairs = [LUA, DATA] + ([CONFIG] if args.config else [])
     entries, copied = {}, []
     for source_rel, target_rel in pairs:
         got, changed = sync_pair(source_rel, target_rel, args.check)

@@ -78,6 +78,11 @@ namespace LiteGame.Core.Host
             try
             {
                 _game.Tick(Time.unscaledDeltaTime);
+                // Android back 在 legacy 输入里映射为 Escape；activeInputHandler=Both 时仍然有效。
+                if (Input.GetKeyDown(KeyCode.Escape))
+                {
+                    _game.HandleBack();
+                }
             }
             catch (Exception exception)
             {

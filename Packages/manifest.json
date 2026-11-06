@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.code-philosophy.luban": "file:../../Test/Packages/com.code-philosophy.luban",
     "com.litegame.net": "file:../../Test/Packages/com.litegame.net",
     "com.litegame.sim": "file:../../Test/Packages/com.litegame.sim",
     "com.litegame.sync": "file:../../Test/Packages/com.litegame.sync",
