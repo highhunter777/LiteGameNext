@@ -1,0 +1,25 @@
+# 行尾统一：二进制交给 git 自动识别，文本一律 LF（跨 Windows/macOS/Linux 稳定）
+* text=auto
+
+*.cs          text eol=lf
+*.lua         text eol=lf
+*.py          text eol=lf
+*.md          text eol=lf
+*.json        text eol=lf
+*.asmdef      text eol=lf
+*.asmref      text eol=lf
+*.shader      text eol=lf
+*.hlsl        text eol=lf
+*.cginc       text eol=lf
+*.uxml        text eol=lf
+*.uss         text eol=lf
+*.txt         text eol=lf
+
+# Unity 序列化资产（YAML）—— 统一 LF，避免跨机器 diff 噪声
+*.meta        text eol=lf
+*.unity       text eol=lf
+*.prefab      text eol=lf
+*.asset       text eol=lf
+*.mat         text eol=lf
+*.anim        text eol=lf
+*.controller  text eol=lf
