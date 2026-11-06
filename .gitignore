@@ -58,6 +58,11 @@ Assets/Plugins/
 Tests/**/bin/
 Tests/**/obj/
 
+# ----- Python -----
+__pycache__/
+*.pyc
+.venv/
+
 # ----- 系统 / 临时 -----
 .DS_Store
 Thumbs.db
