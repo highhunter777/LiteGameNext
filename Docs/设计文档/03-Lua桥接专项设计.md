@@ -30,7 +30,7 @@
 | 件 | 位置 | 行数预算 | 职责 |
 |---|---|---|---|
 | `LuaHost` | `Core/Lua` | ≤ 250 | `LuaEnv` 生命周期：Start / Reload / Dispose；装载 Lua 根目录；`main.lua` 执行；全局错误处理 |
-| `Bridge`（部分类） | `Game/Bridge` | ≤ 500（8 文件） | 把 C# 能力注册成 6 张 Lua 表；只做转发，不做缓存 |
+| `Bridge`（部分类） | `Game/Bridge` | ≤ 500（9 文件） | 把 C# 能力注册成 8 张 Lua 表；只做转发，不做缓存 |
 | `LuaPageProxy` | `Core/Lua` | ≤ 150 | 注入到页面的 `self.ui`；按 key 找控件并调用；缺件降级 |
 | `LuaCallback` | `Core/Lua` | ≤ 80 | C# → Lua 回调：主线程、pcall、页面 token 校验、异常日志一次 |
 | `LuaScreen`（MonoBehaviour） | `Game/Ui` | ≤ 60 | 预制体上的 Lua 页宿主：创建页面实例、派发 `OnShow/OnHide/OnReveal/OnUpdate` |
@@ -43,13 +43,13 @@
 AssetHost.Init → ConfigHost.Load → LuaHost.Start()
    └─ 装载 lua 根 → LuaEnv.AddLoader → run("main.lua")
    └─ main.lua: require("lib.class") / 预置 require 搜索路径 / 注册全局错误钩子
-Game → Bridge.Install(lua, ui, meta, room, data, text, settings, log)   // 注册 6 张表 + Bridge
+Game → Bridge.Install(lua, ui, account, lobby, room, data, text, settings, log)   // 注册 8 张表 + Bridge
 UiHost → ScreenManager → 打开首屏 → LuaScreen: page = require(script):new(self.ui)
 ```
 
 ---
 
-## 3. API 面（6 张表，与旧页面 100% 兼容）
+## 3. API 面（8 张表；旧页面的 `Bridge.meta` 拆成 `account` / `lobby`，见 §9）
 
 命名沿用旧工程的 `Bridge` 与 `self.ui`，**旧页面可以直接跑**，这是刻意的（降低迁移风险，见 §9）。
 
@@ -65,16 +65,21 @@ Bridge.ui.ShowConfirm(text, onOk) -- 确认框；onOk 必需
 Bridge.ui.IsOpen(page) -> bool
 ```
 
-### 3.2 `Bridge.meta` — 账号与大厅（转发 `MetaApi` / `LobbyService`）
+### 3.2 `Bridge.account` / `Bridge.lobby` — 账号与大厅（转发 `AccountApi` / `LobbyApi`）
 
 ```lua
-Bridge.meta.IsConfigured() -> bool
-Bridge.meta.AccountId() -> string
-Bridge.meta.Login(account, password, cb)          -- cb(ok, errKey)
-Bridge.meta.ListRooms(cb)                          -- cb(ok, rows)  rows = {{roomId, players, expectedPlayers, mapName}}
-Bridge.meta.CreateRoom(mapId, players, cb)         -- cb(ok, roomId)
-Bridge.meta.QuickEnter(cb)                         -- cb(ok, roomId)
-Bridge.meta.EnterRoom(roomId, cb)                  -- cb(ok, roomId)
+-- 账号与票据
+Bridge.account.IsConfigured() -> bool
+Bridge.account.AccountId() -> string
+Bridge.account.Login(account, password, cb)  -- cb(ok, errKey)
+Bridge.account.Logout()
+Bridge.account.Records(cb)                   -- cb(ok, rows) 战绩列表
+
+-- 房间列表与进出
+Bridge.lobby.ListRooms(cb)                   -- cb(ok, rows)  rows = {{roomId, players, expectedPlayers, mapName}}
+Bridge.lobby.CreateRoom(mapId, players, cb)  -- cb(ok, roomId)
+Bridge.lobby.QuickEnter(cb)                  -- cb(ok, roomId)
+Bridge.lobby.EnterRoom(roomId, cb)           -- cb(ok, roomId)
 ```
 
 ### 3.3 `Bridge.room` — 本房事实（只读快照，不持有状态）
@@ -195,7 +200,7 @@ public sealed class UiBinder : MonoBehaviour
 
 - C# → Lua 回调统一 `Action<bool, ...>` 形态（≤ 3 参），签名集中定义在 `XLuaGenConfig.cs`（Editor，**≤ 10 项**，稳定后不再动）。这是全工程唯一的"生成配置"，改它需评审。
 - 回调**必须**在主线程触发；`LuaCallback` 负责 `pcall` + token 校验（页面已关 → 丢弃，不报错）。
-- C# 侧发起异步操作时传入页面 token：`LobbyService.ListRooms(pageToken, cb)`；`LuaCallback` 在页面关闭后静默丢弃。
+- C# 侧发起异步操作时传入页面 token：`LobbyApi.ListRooms(pageToken, cb)`；`LuaCallback` 在页面关闭后静默丢弃。
 
 ### 6.3 对象生命周期
 
@@ -257,12 +262,12 @@ public sealed class UiBinder : MonoBehaviour
 
 | 旧文件 | 行数 | 处置 | 需要改动 |
 |---|---|---|---|
-| `Page_Login.lua` | 53 | 直接迁移 | 无（`Bridge.meta.Login` 保持同名） |
-| `Page_Lobby.lua` | 177 | 直接迁移 | 无（`Bridge.data.ListMaps` / `SetList` / `OnListClick` 全保留） |
+| `Page_Login.lua` | 53 | 直接迁移 | `Bridge.meta.Login` → `Bridge.account.Login`（1 处） |
+| `Page_Lobby.lua` | 177 | 直接迁移 | `Bridge.meta.*` → `Bridge.lobby.*`（4 处：ListRooms/CreateRoom/QuickEnter/EnterRoom）；`Bridge.data.ListMaps` / `SetList` / `OnListClick` 全保留 |
 | `Page_Room.lua` | 104 | 直接迁移 | 无（`Bridge.room.*` 同名） |
 | `Page_Result.lua` | 64 | 直接迁移 | 无 |
 | `Page_Settings.lua` | 260 | 直接迁移 | `Bridge.settings` 的 key 名对齐 `SettingsService` 常量 |
-| `Page_Records.lua` | 53 | 直接迁移 | `Bridge.meta.Records(cb)` 需新增（旧 `Bridge.meta` 已有战绩查询） |
+| `Page_Records.lua` | 53 | 直接迁移 | `Bridge.meta.Records` → `Bridge.account.Records`（1 处） |
 | `Page_ButtonDemo.lua` / `UITestPage.lua` | 28 / 20 | 废弃 | — |
 | `lib/class.lua` | 18 | 直接迁移 | 无 |
 | `Cfg/*.lua` | 439 | 生成物 | Luban 输出到 `Scripts/Lua/cfg` |
@@ -293,7 +298,7 @@ HybridCLR 是"将来可选"（01 §15 只锁边界，本期不装）。两者不
 | 热更对象 | 页面逻辑、文案、表格数据 | C# 业务逻辑（性能路径、算法修补） |
 | 生效方式 | 整包替换 Lua 环境（≈200 ms，免重启进程） | 装载 dll + 重进流程 |
 | 上线成本 | 低（改文本重打包） | 中（编译 + 签名 + 装载 + 调试符号） |
-| 跨边界契约 | `self.ui` 22 方法与 `Bridge` 6 张表 | `IGame` 与 Core 的 3 个端口接口 |
+| 跨边界契约 | `self.ui` 22 方法与 `Bridge` 8 张表 | `IGame` 与 Core 的 3 个端口接口 |
 
 **三条规则**：
 
