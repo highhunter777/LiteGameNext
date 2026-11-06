@@ -31,7 +31,9 @@ LocalNotes/
 
 # ----- 第三方原件（不入库；按 02 §5 清单还原）-----
 Assets/ThirdParty/
+Assets/ThirdParty.meta
 Assets/Plugins/
+Assets/Plugins.meta
 
 # ----- 开发工具：Unity Pipeline（Unity 官方包 + 旧仓 2022.3 兼容补丁，13.4 MB；版权件不入库）-----
 # 新克隆/换机：python Tools/restore_pipeline.py
