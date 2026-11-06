@@ -4,6 +4,7 @@
     "references": [
         "LiteGame.Core",
         "LiteGame.Game",
+        "UniTask",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

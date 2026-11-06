@@ -2,7 +2,8 @@
     "name": "LiteGame.Game",
     "rootNamespace": "LiteGame",
     "references": [
-        "LiteGame.Core"
+        "LiteGame.Core",
+        "UniTask"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
