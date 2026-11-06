@@ -2,12 +2,12 @@ using System;
 
 namespace LiteGame.Core.Logging
 {
-    /// <summary>全仓唯一日志门面；启动时 Configure 一次，之后只读。</summary>
+    /// <summary>全仓唯一日志门面；启动期 Configure 一次。任何情况下不抛异常。</summary>
     public static class Log
     {
         private static LogLevel _level = LogLevel.Info;
 
-        /// <summary>设置级别；发布包由 LaunchConfig 传入。</summary>
+        /// <summary>设置级别；仅启动期调用，运行期不再变更。</summary>
         public static void Configure(LogLevel level)
         {
             _level = level;
@@ -45,7 +45,12 @@ namespace LiteGame.Core.Logging
                 return;
             }
 
-            var text = tag == null ? message : "[" + tag + "] " + message;
+            var text = message ?? "(null)";
+            if (!string.IsNullOrEmpty(tag))
+            {
+                text = "[" + tag + "] " + text;
+            }
+
             switch (level)
             {
                 case LogLevel.Warn:

@@ -5,7 +5,8 @@ using XLua;
 
 namespace LiteGame.Core.Lua
 {
-    /// <summary>Lua 环境宿主：根目录装载、入口执行、整包重载。</summary>
+    /// <summary>Lua 环境宿主：根目录装载、入口执行、整包重载。仅主线程。
+    /// 释放后可再次 Start（会新建环境）。</summary>
     public sealed class LuaHost : IDisposable
     {
         private const string MainScript = "main";
@@ -15,19 +16,36 @@ namespace LiteGame.Core.Lua
 
         public LuaHost(string luaRoot)
         {
+            if (string.IsNullOrEmpty(luaRoot))
+            {
+                throw new ArgumentException("luaRoot 不能为空", nameof(luaRoot));
+            }
+
             _root = luaRoot;
         }
 
         public bool IsRunning => _env != null;
 
-        public LuaEnv Env => _env;
+        /// <summary>未启动或已释放时访问抛 InvalidOperationException。</summary>
+        public LuaEnv Env
+        {
+            get
+            {
+                if (_env == null)
+                {
+                    throw new InvalidOperationException("LuaHost 未启动或已释放");
+                }
 
-        /// <summary>创建环境并执行 main.lua；失败返回 false 并已清理。</summary>
+                return _env;
+            }
+        }
+
+        /// <summary>创建环境并执行 main.lua；失败记日志、清理并返回 false。</summary>
         public bool Start()
         {
             if (_env != null)
             {
-                throw new InvalidOperationException("LuaHost 已启动");
+                throw new InvalidOperationException("LuaHost 已启动，先用 Dispose 释放");
             }
 
             _env = new LuaEnv();

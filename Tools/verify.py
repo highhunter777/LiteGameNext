@@ -44,10 +44,18 @@ AOT_FORBIDDEN = re.compile(r"\bLiteGame\.(Game|Ui|Boot|Features)\b")
 # ---- 结构 ----
 FORBIDDEN_DIRS = {"abstractions", "utils", "helpers", "common"}
 FORBIDDEN_CALLS = (("GameObject.Find(", "改走显式引用/SceneRefs，禁按名查找"),)
+PUBLIC_FIELD = re.compile(
+    r"^\s*public\s+((?:(?:static|volatile|new|unsafe|readonly|const|required)\s+)*)"
+    r"([A-Za-z_][\w<>\[\],\.\?]*)\s+([A-Za-z_]\w*)\s*(?:=[^;]*)?;"
+)
 
 # ---- 卫生 ----
 DEBUG_LOG = re.compile(r"\bDebug\.Log(Warning|Error|Format|Assert)?\s*\(")
 LOG_SINK = "Assets/Scripts/Core/Logging/Log.cs"   # 日志门面本身，唯一允许调用 Debug.Log 的文件
+BARE_FORGET = re.compile(r"\.Forget\s*\(\s*\)")
+CATCH_BLOCK = re.compile(r"catch\s*(?:\([^)]*\))?\s*\{")
+CATCH_HANDLED = ("Log.", "throw ", "return ")
+CORE_TIME = re.compile(r"\bTime\.(?:deltaTime|unscaledDeltaTime|time|realtimeSinceStartup|frameCount|timeScale)\b")
 EMPTY_CATCH = re.compile(r"catch\s*(?:\([^)]*\))?\s*\{\s*\}")
 TODO_MARK = re.compile(r"\b(TODO|FIXME)\b")
 SECRET_PATTERNS = (
@@ -134,6 +142,22 @@ def runtime_files():
 
 def line_of(text: str, index: int) -> int:
     return text.count("\n", 0, index) + 1
+
+
+def _brace_body(text: str, open_index: int) -> str:
+    """返回与 open_index 处 '{' 配对的花括号内文本（不含外层括号）。"""
+    depth = 0
+    index = open_index
+    while index < len(text):
+        char = text[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[open_index + 1:index]
+        index += 1
+    return text[open_index + 1:]
 
 
 class Result:
@@ -255,7 +279,21 @@ def check_structure() -> Result:
                 r.fail(f"{rel(path)}:{line_of(text, index)}", message)
                 start = index + len(needle)
 
-    r.note(f"{dirs} 目录；{calls} 处禁用调用")
+    fields = 0
+    for path in iter_files(SCRIPTS, {".cs"}):
+        for number, line in enumerate(read_text(path).splitlines(), start=1):
+            if "=>" in line:
+                continue
+            match = PUBLIC_FIELD.match(line)
+            if not match:
+                continue
+            modifiers, symbol = match.group(1), match.group(3)
+            if "const" in modifiers or "readonly" in modifiers:
+                continue
+            fields += 1
+            r.fail(f"{rel(path)}:{number}", f"public 可变字段 `{symbol}`：改 readonly 或构造注入")
+
+    r.note(f"{dirs} 目录；{calls} 处禁用调用；{fields} 个 public 可变字段")
     return r
 
 
@@ -279,6 +317,17 @@ def check_hygiene() -> Result:
             r.fail(f"{posix}:{line_of(text, match.start())}", "空 catch —— 要么处理要么抛出（01 §10）")
         for match in TODO_MARK.finditer(text):
             r.fail(f"{posix}:{line_of(text, match.start())}", "TODO/FIXME 悬挂：改成「待办批次」或直接做完")
+        for match in BARE_FORGET.finditer(text):
+            r.fail(f"{posix}:{line_of(text, match.start())}", "禁裸 .Forget()：必须带错误处理（.Forget(Log.Error)）")
+        for match in CATCH_BLOCK.finditer(text):
+            body = _brace_body(text, match.end() - 1)
+            if not body.strip():
+                continue
+            if not any(token in body for token in CATCH_HANDLED):
+                r.fail(f"{posix}:{line_of(text, match.start())}", "catch 必须三选一：记日志 / 抛出 / 返回可判断失败值")
+        if "/Core/" in "/" + posix and "/Host/" not in "/" + posix:
+            for match in CORE_TIME.finditer(text):
+                r.fail(f"{posix}:{line_of(text, match.start())}", "Core 非 Host 代码不得直接读 Time：走 GameClock 注入")
 
     secrets = 0
     for path in sorted(ROOT.rglob("*")):
