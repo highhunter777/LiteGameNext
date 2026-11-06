@@ -429,6 +429,14 @@ def load_naming_exceptions(result: Result):
     return entries
 
 
+def _is_test_method_name(path_text: str, symbol: str) -> bool:
+    """测试方法允许 A_B_C 段式命名（.NET 测试主流写法），每段 PascalCase。"""
+    if "/Tests/" not in "/" + path_text:
+        return False
+    segments = symbol.split("_")
+    return len(segments) > 1 and all(PASCAL.match(segment) for segment in segments)
+
+
 def check_naming() -> Result:
     r = Result("naming")
     entries = load_naming_exceptions(r)
@@ -479,7 +487,7 @@ def check_naming() -> Result:
             match = METHOD_LINE.match(line)
             if match:
                 returns, symbol = match.group(1), match.group(2)
-                if not PASCAL.match(symbol):
+                if not PASCAL.match(symbol) and not _is_test_method_name(name_path, symbol):
                     add("method", symbol, here, f"方法 `{symbol}` 应 PascalCase")
                 base = returns.split("<")[0].split(".")[-1]
                 if base in ASYNC_RETURNS and not symbol.endswith("Async"):

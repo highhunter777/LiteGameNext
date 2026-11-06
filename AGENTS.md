@@ -10,7 +10,7 @@
 | 1 | **预算** | 运行时 ≤ 25,000 行 / 220 文件；asmdef ≤ 5；interface ≤ 20；单文件 ≤ 400 行；单目录 ≤ 20 文件 |
 | 2 | **依赖方向** | `Assets/Scripts/Core` 不出现 `LiteGame.Game/Ui/Boot/Features`；Core.asmdef 不引用 `LiteGame.Game`（AOT 边界，01 §15） |
 | 3 | **结构** | 禁 `Abstractions/`、`Utils/`、`Helpers/`、`Common/` 目录；禁裸 `GameObject.Find(` |
-| 4 | **命名** | 主流 C#/.NET 规约（02 §3.1）：类型/方法 PascalCase、私有字段 `_camelCase`、常量 PascalCase、异步 `Async` 后缀、文件名=类型名；偏离只走例外登记（附 reason + approvedBy）；概念用词见表（02 §3.6，一个概念一个词） |
+| 4 | **命名** | 主流 C#/.NET 规约（02 §3.1）：类型/方法 PascalCase、私有字段 `_camelCase`、常量 PascalCase、异步 `Async` 后缀、文件名=类型名；偏离只走例外登记（附 reason + approvedBy）；测试方法允许 `A_B_C` 分段；概念用词见表（02 §3.6，一个概念一个词） |
 | 5 | **卫生** | 禁 `Debug.Log*`（Editor 除外）；禁空 `catch`；禁 `TODO/FIXME`；禁密钥字面量 |
 | 6 | **注释** | XML 注释 ≤4 行；类型块注释 ≤3 行；成员 ≤2 行（生成物豁免） |
 | 7 | **文档** | 相对链接有效；设计文档不写施工状态（`已交付/已实施/待提交/批次X`）；文档 ≤8 篇 / 2,000 行 |

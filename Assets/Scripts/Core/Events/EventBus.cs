@@ -1,14 +1,17 @@
 using System;
 using System.Collections.Generic;
+using LiteGame.Core.Logging;
 
 namespace LiteGame.Core.Events
 {
-    /// <summary>强类型事件总线：实例持有、零反射；回调内不要增删订阅。</summary>
+    /// <summary>强类型事件总线：实例持有、零反射、仅主线程。
+    /// 派发期间增删订阅安全：新增只影响下一次派发，退订立即生效（未轮到的不再调用）。
+    /// 单个处理器的异常被隔离并记日志，不中断其余处理器。</summary>
     public sealed class EventBus
     {
-        private readonly Dictionary<Type, List<Delegate>> _handlers = new Dictionary<Type, List<Delegate>>();
+        private readonly Dictionary<Type, object> _channels = new Dictionary<Type, object>();
 
-        /// <summary>订阅；Dispose 即退订。</summary>
+        /// <summary>订阅；Dispose 即退订，可重复 Dispose。</summary>
         public IDisposable Subscribe<T>(Action<T> handler)
         {
             if (handler == null)
@@ -16,59 +19,178 @@ namespace LiteGame.Core.Events
                 throw new ArgumentNullException(nameof(handler));
             }
 
-            if (!_handlers.TryGetValue(typeof(T), out var list))
-            {
-                list = new List<Delegate>(4);
-                _handlers.Add(typeof(T), list);
-            }
-
-            list.Add(handler);
-            return new Subscription(list, handler);
+            return GetOrCreate<T>().Subscribe(handler);
         }
 
-        /// <summary>派发；无订阅者时为零开销。</summary>
+        /// <summary>派发；无订阅者时零分配。</summary>
         public void Publish<T>(T signal)
         {
-            if (!_handlers.TryGetValue(typeof(T), out var list))
+            if (_channels.TryGetValue(typeof(T), out var channel))
             {
-                return;
-            }
-
-            var count = list.Count;
-            for (var i = 0; i < count && i < list.Count; i++)
-            {
-                if (list[i] is Action<T> handler)
-                {
-                    handler(signal);
-                }
+                ((Channel<T>)channel).Publish(signal);
             }
         }
 
+        /// <summary>清空全部订阅；派发中调用同样安全。</summary>
         public void Clear()
         {
-            _handlers.Clear();
+            foreach (var pair in _channels)
+            {
+                ((IChannel)pair.Value).Clear();
+            }
         }
 
-        private sealed class Subscription : IDisposable
+        private Channel<T> GetOrCreate<T>()
         {
-            private readonly Delegate _handler;
-            private List<Delegate> _list;
-
-            public Subscription(List<Delegate> list, Delegate handler)
+            if (_channels.TryGetValue(typeof(T), out var channel))
             {
-                _list = list;
-                _handler = handler;
+                return (Channel<T>)channel;
             }
 
-            public void Dispose()
+            var created = new Channel<T>();
+            _channels.Add(typeof(T), created);
+            return created;
+        }
+
+        private interface IChannel
+        {
+            void Clear();
+        }
+
+        private sealed class Channel<T> : IChannel
+        {
+            private readonly List<Slot> _slots = new List<Slot>(4);
+            private int _publishing;
+            private bool _clearPending;
+
+            public IDisposable Subscribe(Action<T> handler)
             {
-                if (_list == null)
+                var slot = new Slot(handler);
+                _slots.Add(slot);
+                return new Subscription(this, slot);
+            }
+
+            public void Publish(T signal)
+            {
+                var count = _slots.Count;
+                if (count == 0)
                 {
                     return;
                 }
 
-                _list.Remove(_handler);
-                _list = null;
+                _publishing++;
+                try
+                {
+                    for (var i = 0; i < count && i < _slots.Count; i++)
+                    {
+                        var slot = _slots[i];
+                        if (!slot.Active)
+                        {
+                            continue;
+                        }
+
+                        try
+                        {
+                            slot.Handler(signal);
+                        }
+                        catch (Exception exception)
+                        {
+                            Log.Error(exception, "EventBus/" + typeof(T).Name);
+                        }
+                    }
+                }
+                finally
+                {
+                    _publishing--;
+                    if (_publishing == 0)
+                    {
+                        Sweep();
+                    }
+                }
+            }
+
+            public void Clear()
+            {
+                for (var i = 0; i < _slots.Count; i++)
+                {
+                    _slots[i].Active = false;
+                }
+
+                if (_publishing > 0)
+                {
+                    _clearPending = true;
+                    return;
+                }
+
+                _slots.Clear();
+            }
+
+            private void Unsubscribe(Slot slot)
+            {
+                if (!slot.Active)
+                {
+                    return;
+                }
+
+                slot.Active = false;
+                if (_publishing == 0)
+                {
+                    Sweep();
+                }
+            }
+
+            private void Sweep()
+            {
+                if (_clearPending)
+                {
+                    _slots.Clear();
+                    _clearPending = false;
+                    return;
+                }
+
+                for (var i = _slots.Count - 1; i >= 0; i--)
+                {
+                    if (!_slots[i].Active)
+                    {
+                        _slots.RemoveAt(i);
+                    }
+                }
+            }
+
+            private sealed class Slot
+            {
+                public Slot(Action<T> handler)
+                {
+                    Handler = handler;
+                    Active = true;
+                }
+
+                public Action<T> Handler { get; }
+
+                public bool Active { get; set; }
+            }
+
+            private sealed class Subscription : IDisposable
+            {
+                private readonly Slot _slot;
+                private Channel<T> _channel;
+
+                public Subscription(Channel<T> channel, Slot slot)
+                {
+                    _channel = channel;
+                    _slot = slot;
+                }
+
+                public void Dispose()
+                {
+                    if (_channel == null)
+                    {
+                        return;
+                    }
+
+                    _channel.Unsubscribe(_slot);
+                    _channel = null;
+                }
             }
         }
     }
