@@ -62,7 +62,11 @@ def main() -> int:
         if not path.exists():
             print("找不到：" + item)
             return 1
-        queue.append(path)
+        if path.is_dir():
+            # 目录：整树导入（shader 的 include 是路径引用，GUID 闭包抓不到）
+            queue.extend(p for p in path.rglob("*") if p.is_file() and p.suffix != ".meta")
+        else:
+            queue.append(path)
 
     seen, scripts, missing = set(), set(), set()
     while queue:
