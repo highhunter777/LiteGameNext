@@ -5,6 +5,7 @@
         "LiteGame.Core",
         "LiteGame.Game",
         "UniTask",
+        "LiteSim",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

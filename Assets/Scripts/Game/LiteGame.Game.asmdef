@@ -4,7 +4,9 @@
     "references": [
         "LiteGame.Core",
         "UniTask",
-        "xLuaMain"
+        "xLuaMain",
+        "LiteSim",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
