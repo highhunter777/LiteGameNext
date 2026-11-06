@@ -23,6 +23,7 @@ DEFAULT_SOURCE = ROOT.parent / "Test" / "Assets" / "ThirdParty"
 # 相对 ThirdParty 的路径
 ITEMS = (
     Path("Plugins") / "UniTask",
+    Path("Plugins") / "x86_64",   # xLua 原生库（xlua.dll / libxlua.so）；漏了它 LuaEnv 构造会 DllNotFoundException
     Path("XLua"),
 )
 

@@ -31,6 +31,8 @@ LocalNotes/
 
 # ----- 第三方原件（不入库；按 02 §5 清单还原）-----
 Assets/ThirdParty/
+# 开源参考仓库（只读对照，Unity 不导入；见 Tools/README.md）
+ThirdParty/
 Assets/ThirdParty.meta
 Assets/Plugins/
 Assets/Plugins.meta

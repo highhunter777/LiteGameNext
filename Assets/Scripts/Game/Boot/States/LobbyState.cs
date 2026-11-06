@@ -1,20 +1,29 @@
+using System;
 using Cysharp.Threading.Tasks;
 using LiteGame.Core.Logging;
+using LiteGame.Ui;
 
 namespace LiteGame.Boot.States
 {
-    /// <summary>Lobby：大厅（房间列表/创房）；P0 占位。</summary>
+    /// <summary>Lobby：显示 Lua 页（P0 由 Page_Lobby 渲染 hello）；退出清页面栈。</summary>
     public sealed class LobbyState : IAppState
     {
-        public UniTask EnterAsync()
+        private readonly UiHost _ui;
+
+        public LobbyState(UiHost ui)
         {
-            Log.Info("进入 Lobby（P0 占位）", "LobbyState");
-            return UniTask.CompletedTask;
+            _ui = ui ?? throw new ArgumentNullException(nameof(ui));
+        }
+
+        public async UniTask EnterAsync()
+        {
+            await _ui.Screens.ShowAsync(ScreenId.Lobby);
+            Log.Info("进入 Lobby", LogTag.Flow);
         }
 
         public UniTask ExitAsync()
         {
-            return UniTask.CompletedTask;
+            return _ui.Screens.CloseAllAsync();
         }
 
         public void Tick(float deltaSeconds)

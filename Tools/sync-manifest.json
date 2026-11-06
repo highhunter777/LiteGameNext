@@ -1,0 +1,19 @@
+{
+  "_sourceHead": "c55cb408",
+  "_syncedAt": "2026-11-06T16:17:37+00:00",
+  "Assets/Scripts/Lua/cfg/battlestrategy.lua": "41fe3a23046d9f0e3d67b291d1c1fb16b2c7a47866afdecd74b41fff4247af5c",
+  "Assets/Scripts/Lua/cfg/tbanimationprofile.lua": "fa78a07a6492f6d87668e158512c32e342790b0ca2201493a9663471f5102e6b",
+  "Assets/Scripts/Lua/cfg/tbbattlestrategy.lua": "80bbbddcc992945cf18f3146335751f8a986e39eb7a586684d316d6bc38ede0f",
+  "Assets/Scripts/Lua/cfg/tbcombatgeom.lua": "c7f55e17feca9e3861fd7466d0630ba5fb3c06e69d34c4fbdb1397ee06d0884b",
+  "Assets/Scripts/Lua/cfg/tbcombatnum.lua": "5dfcc204cd1b0864328757c1e860fc17ec97be759d7ee9f1f597084256b84ca7",
+  "Assets/Scripts/Lua/cfg/tbcontententry.lua": "fa6eb47e7ee811403cce5e79e976efa88db6e614d7560158cb52aabdbaf522f1",
+  "Assets/Scripts/Lua/cfg/tbcrosshair.lua": "00c2374bc241846f1b61825c810f49a557cc021063c7a78f49f61603cd83fa3a",
+  "Assets/Scripts/Lua/cfg/tbentityconfig.lua": "2a69f10cb10b2bcb30c3ab6a61c07da7aa910dce931563b68390924d9fe8db38",
+  "Assets/Scripts/Lua/cfg/tbitemconfig.lua": "32b3323b66f600e1b2372ff3e13ffe19489a6814b59315bb44dd10cb32463b76",
+  "Assets/Scripts/Lua/cfg/tbltext.lua": "24b513cbdde7ee7070ca5f5e12accffaba8491aa7f6c644905ca3e7d6c2e9434",
+  "Assets/Scripts/Lua/cfg/tbmap.lua": "bbfdd8be7ad34f483f882efff9cc4e8f6040ee30289f810fde43955e375e42a3",
+  "Assets/Scripts/Lua/cfg/tbmovementconfig.lua": "4d9246910fc31c1b524dae8504ad0d5421d6ac4efe204c86b24476e4ae044db2",
+  "Assets/Scripts/Lua/cfg/tbstrategy.lua": "a045c571891e4e1140407a84723a0acf69a4960e93297c9143921ea022d18f2d",
+  "Assets/Scripts/Lua/cfg/tbuiform.lua": "8fe3385c917f7dba1568cd5039dda5020dbfb4908c3d728381645ea88516cec8",
+  "Assets/Scripts/Lua/cfg/tbweapon.lua": "4b9fd50a26108a98949124b142f1db84a1ac4bad73eb9a3e0fc1c2cb7cb357aa"
+}

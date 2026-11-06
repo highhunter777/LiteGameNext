@@ -48,25 +48,39 @@ namespace LiteGame.Core.Lua
                 throw new InvalidOperationException("LuaHost 已启动，先用 Dispose 释放");
             }
 
-            _env = new LuaEnv();
-            _env.AddLoader(LoadChunk);
             try
             {
+                _env = new LuaEnv();
+                _env.AddLoader(LoadChunk);
                 _env.DoString("require('" + MainScript + "')", "main.lua");
                 return true;
             }
             catch (Exception exception)
             {
-                Log.Error(exception, "Lua");
+                Log.Error(exception, LogTag.Lua);
                 Dispose();
                 return false;
             }
         }
 
+        /// <summary>幂等；xLua 释放失败只记日志，不让 Dispose 抛出。</summary>
         public void Dispose()
         {
-            _env?.Dispose();
+            var env = _env;
             _env = null;
+            if (env == null)
+            {
+                return;
+            }
+
+            try
+            {
+                env.Dispose();
+            }
+            catch (Exception exception)
+            {
+                Log.Error(exception, LogTag.Lua);
+            }
         }
 
         private byte[] LoadChunk(ref string filepath)

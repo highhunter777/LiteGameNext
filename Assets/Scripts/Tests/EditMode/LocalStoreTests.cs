@@ -30,6 +30,14 @@ namespace LiteGame.Tests.EditMode
         }
 
         [Test]
+        public void SetString_NullValue_Throws()
+        {
+            var store = new LocalStore();
+
+            Assert.Throws<ArgumentNullException>(() => store.SetString(StringKey, null));
+        }
+
+        [Test]
         public void SetAndGet_RoundTripsValues()
         {
             var store = new LocalStore();

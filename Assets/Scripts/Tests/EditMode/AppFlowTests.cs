@@ -51,7 +51,7 @@ namespace LiteGame.Tests.EditMode
         public void Enter_StateThrows_TransitionsToError()
         {
             _boot.ThrowOnEnter = true;
-            LogAssert.Expect(LogType.Error, new Regex("AppFlow"));
+            LogAssert.Expect(LogType.Error, new Regex(@"\[Flow\]"));
 
             _flow.EnterAsync(AppState.Boot).GetAwaiter().GetResult();
 
@@ -88,6 +88,36 @@ namespace LiteGame.Tests.EditMode
             _flow.EnterAsync(AppState.Boot).GetAwaiter().GetResult();
 
             Assert.IsTrue(guardObserved);
+        }
+
+        [Test]
+        public void Contains_ReflectsRegisteredStates()
+        {
+            Assert.IsTrue(_flow.Contains(AppState.Boot));
+            Assert.IsFalse(_flow.Contains(AppState.Room));
+        }
+
+        [Test]
+        public void Constructor_CopiesStates()
+        {
+            var states = new Dictionary<AppState, IAppState>
+            {
+                { AppState.Boot, new FakeState() },
+            };
+            var flow = new AppFlow(states);
+            states.Clear();
+
+            Assert.IsTrue(flow.Contains(AppState.Boot));
+        }
+
+        [Test]
+        public void Shutdown_ExitsCurrentAndResets()
+        {
+            _flow.EnterAsync(AppState.Boot).GetAwaiter().GetResult();
+            _flow.ShutdownAsync().GetAwaiter().GetResult();
+
+            Assert.AreEqual(1, _boot.Exits);
+            Assert.AreEqual(AppState.None, _flow.Current);
         }
 
         private sealed class FakeState : IAppState

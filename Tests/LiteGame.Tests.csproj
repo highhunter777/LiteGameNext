@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>LiteGame.Tests</AssemblyName>
+    <RootNamespace>LiteGame.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 只链接不依赖 UnityEngine 的 Core 源码（02 §6.3）；Unity 侧仍由 asmdef 编译 -->
+    <Compile Include="..\Assets\Scripts\Core\Pooling\ObjectPool.cs" Link="Core\ObjectPool.cs" />
+    <Compile Include="..\Assets\Scripts\Core\Commands\CommandTable.cs" Link="Core\CommandTable.cs" />
+    <Compile Include="..\Assets\Scripts\Core\Timing\FixedStep.cs" Link="Core\FixedStep.cs" />
+  </ItemGroup>
+
+</Project>

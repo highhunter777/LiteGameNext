@@ -53,6 +53,9 @@ PUBLIC_FIELD = re.compile(
 DEBUG_LOG = re.compile(r"\bDebug\.Log(Warning|Error|Format|Assert)?\s*\(")
 LOG_SINK = "Assets/Scripts/Core/Logging/Log.cs"   # 日志门面本身，唯一允许调用 Debug.Log 的文件
 BARE_FORGET = re.compile(r"\.Forget\s*\(\s*\)")
+LOG_TAG_NONE = re.compile(r"\bLogTag\.None\b")
+# 枚举定义 + 日志门面的兜底分支：None 只允许出现在这两处
+LOG_TAG_EXCLUDES = {"Assets/Scripts/Core/Logging/LogTag.cs", "Assets/Scripts/Core/Logging/Log.cs"}
 CATCH_BLOCK = re.compile(r"catch\s*(?:\([^)]*\))?\s*\{")
 CATCH_HANDLED = ("Log.", "throw ", "return ")
 CORE_TIME = re.compile(r"\bTime\.(?:deltaTime|unscaledDeltaTime|time|realtimeSinceStartup|frameCount|timeScale)\b")
@@ -319,6 +322,9 @@ def check_hygiene() -> Result:
             r.fail(f"{posix}:{line_of(text, match.start())}", "TODO/FIXME 悬挂：改成「待办批次」或直接做完")
         for match in BARE_FORGET.finditer(text):
             r.fail(f"{posix}:{line_of(text, match.start())}", "禁裸 .Forget()：必须带错误处理（.Forget(Log.Error)）")
+        if posix not in LOG_TAG_EXCLUDES:
+            for match in LOG_TAG_NONE.finditer(text):
+                r.fail(f"{posix}:{line_of(text, match.start())}", "LogTag.None 只用于兜底：正式日志必须传模块标签")
         for match in CATCH_BLOCK.finditer(text):
             body = _brace_body(text, match.end() - 1)
             if not body.strip():
@@ -569,7 +575,8 @@ def check_naming() -> Result:
                 elif not PRIVATE_FIELD.match(symbol):
                     add("field", symbol, here, f"私有字段 `{symbol}` 应为 _camelCase")
 
-        if first_type and path.stem != first_type:
+        # 部分类按语义拆分（Bridge.Ui.cs / LuaPageProxy.Widgets.cs）视为同类型文件（02 §3.4）
+        if first_type and path.stem != first_type and not path.stem.startswith(first_type + "."):
             add("file", first_type, f"{name_path}:1", f"文件名应等于首类型名 `{first_type}`（一文件一类型）")
 
     for entry in entries:
@@ -592,7 +599,8 @@ def check_build() -> Result:
         return r
     for args in (["dotnet", "build", str(csproj), "-v", "q", "-nologo"],
                  ["dotnet", "test", str(csproj), "--no-build", "-v", "q", "-nologo"]):
-        proc = subprocess.run(args, cwd=ROOT, capture_output=True, text=True)
+        proc = subprocess.run(args, cwd=ROOT, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace")
         if proc.returncode != 0:
             tail = (proc.stdout + proc.stderr).strip().splitlines()[-8:]
             r.fail(" ".join(args[:2]), "失败：" + " | ".join(tail))
@@ -610,7 +618,8 @@ def check_shared() -> Result:
     import hashlib
 
     recorded = json.loads(read_text(manifest))
-    for name, digest in recorded.items():
+    files = {name: digest for name, digest in recorded.items() if not name.startswith("_")}
+    for name, digest in files.items():
         path = ROOT / name
         if not path.exists():
             r.fail(name, "同步清单里的文件缺失，跑 python Tools/sync_shared.py")
@@ -618,7 +627,7 @@ def check_shared() -> Result:
         actual = hashlib.sha256(path.read_bytes()).hexdigest()
         if actual != digest:
             r.fail(name, "哈希与同步清单不符，旧仓已重生成？跑 python Tools/sync_shared.py")
-    r.note(f"比对 {len(recorded)} 个生成物")
+    r.note(f"比对 {len(files)} 个生成物")
     return r
 
 

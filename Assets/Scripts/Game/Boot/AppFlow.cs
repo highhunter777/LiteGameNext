@@ -8,7 +8,7 @@ namespace LiteGame.Boot
     /// <summary>应用状态机：切换的唯一写者。重复进入同态幂等；切换中重入 fail-fast。</summary>
     public sealed class AppFlow
     {
-        private readonly IReadOnlyDictionary<AppState, IAppState> _states;
+        private readonly Dictionary<AppState, IAppState> _states;
         private IAppState _current;
         private bool _switching;
 
@@ -24,10 +24,24 @@ namespace LiteGame.Boot
                 throw new ArgumentException("状态表不能为空", nameof(states));
             }
 
-            _states = states;
+            // 拷一份：外部继续改传入的字典不得影响已在运行的状态机。
+            _states = new Dictionary<AppState, IAppState>(states.Count);
+            foreach (var pair in states)
+            {
+                _states.Add(pair.Key, pair.Value);
+            }
         }
 
         public AppState Current { get; private set; } = AppState.None;
+
+        /// <summary>切换中（含 await 期间）；外部据此避免重入。</summary>
+        public bool IsSwitching => _switching;
+
+        /// <summary>目标状态是否已注册；请求方据此在入口处 fail-fast。</summary>
+        public bool Contains(AppState state)
+        {
+            return _states.ContainsKey(state);
+        }
 
         /// <summary>切到目标状态；入口异常会转到 Error（Error 自身再失败则只记日志）。</summary>
         public UniTask EnterAsync(AppState next)
@@ -45,7 +59,7 @@ namespace LiteGame.Boot
             _current?.Tick(deltaSeconds);
         }
 
-        /// <summary>关停：退出当前状态并复位为 None。</summary>
+        /// <summary>关停：退出当前状态并复位为 None；Exit 跨帧时由调用方决定等待或丢弃。</summary>
         public async UniTask ShutdownAsync()
         {
             if (_current == null)
@@ -63,7 +77,7 @@ namespace LiteGame.Boot
         {
             if (next == Current)
             {
-                Log.Debug("已在 " + next + "，跳过", "AppFlow");
+                Log.Debug("已在 " + next + "，跳过", LogTag.Flow);
                 return;
             }
 
@@ -86,10 +100,9 @@ namespace LiteGame.Boot
             }
             catch (Exception exception)
             {
-                Log.Error(exception, "AppFlow");
+                Log.Error(exception, LogTag.Flow);
                 if (next != AppState.Error)
                 {
-                    _switching = false;
                     await SwitchAsync(AppState.Error);
                 }
             }

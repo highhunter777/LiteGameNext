@@ -35,6 +35,11 @@ namespace LiteGame.Core.Storage
 
         public void SetString(string key, string value)
         {
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
+
             PlayerPrefs.SetString(Key(key), value);
         }
 

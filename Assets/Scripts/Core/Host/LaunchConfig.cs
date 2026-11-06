@@ -10,6 +10,7 @@ namespace LiteGame.Core.Host
         private const string LuaRootArg = "-luaRoot";
         private const string MetaUrlArg = "-metaUrl";
         private const string CdnRootArg = "-cdnRoot";
+        private const string LogLevelArg = "-logLevel";
 
         public LaunchConfig(
             LogLevel logLevel,
@@ -43,8 +44,8 @@ namespace LiteGame.Core.Host
         /// <summary>编辑器用模拟模式，Player 默认离线；联机模式由后续版本策略切。</summary>
         public AssetMode AssetMode { get; }
 
-        /// <summary>从命令行解析；开关形如 `-luaRoot &lt;path&gt;`，缺省用 defaultLuaRoot。</summary>
-        public static LaunchConfig Load(string[] args, string defaultLuaRoot, LogLevel logLevel = LogLevel.Info)
+        /// <summary>从命令行解析；开关形如 `-luaRoot &lt;path&gt;`，缺省用给定默认值。</summary>
+        public static LaunchConfig Load(string[] args, string defaultLuaRoot, LogLevel defaultLogLevel = LogLevel.Info)
         {
             if (args == null)
             {
@@ -57,7 +58,7 @@ namespace LiteGame.Core.Host
             }
 
             return new LaunchConfig(
-                logLevel,
+                ReadLogLevel(args, defaultLogLevel),
                 Read(args, LuaRootArg, defaultLuaRoot),
                 Read(args, MetaUrlArg, string.Empty),
                 Read(args, CdnRootArg, string.Empty),
@@ -75,6 +76,15 @@ namespace LiteGame.Core.Host
             }
 
             return fallback;
+        }
+
+        /// <summary>未给/非法/未定义级别一律回退：命令行属边界层，不抛。</summary>
+        private static LogLevel ReadLogLevel(string[] args, LogLevel fallback)
+        {
+            var text = Read(args, LogLevelArg, null);
+            return Enum.TryParse(text, ignoreCase: true, out LogLevel level) && Enum.IsDefined(typeof(LogLevel), level)
+                ? level
+                : fallback;
         }
     }
 }

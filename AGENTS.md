@@ -11,7 +11,7 @@
 | 2 | **依赖方向** | `Assets/Scripts/Core` 不出现 `LiteGame.Game/Ui/Boot/Features`；Core.asmdef 不引用 `LiteGame.Game`（AOT 边界，01 §15） |
 | 3 | **结构** | 禁 `Abstractions/`、`Utils/`、`Helpers/`、`Common/` 目录；禁裸 `GameObject.Find(`；禁 public 可变字段（改 readonly 或构造注入） |
 | 4 | **命名** | 主流 C#/.NET 规约（02 §3.1）：类型/方法 PascalCase、私有字段 `_camelCase`、常量 PascalCase、异步 `Async` 后缀、文件名=类型名；偏离只走例外登记（附 reason + approvedBy）；测试方法允许 `A_B_C` 分段；概念用词见表（02 §3.6，一个概念一个词） |
-| 5 | **卫生** | 禁 `Debug.Log*`（Editor 与 `Log.cs` 除外）；catch 必须三选一（记日志/抛出/返回失败值）；禁裸 `.Forget()`；禁 `TODO/FIXME`；禁密钥字面量；Core 非 Host 不直读 `Time` |
+| 5 | **卫生** | 禁 `Debug.Log*`（Editor 与 `Log.cs` 除外）；catch 必须三选一（记日志/抛出/返回失败值）；禁裸 `.Forget()`；禁 `TODO/FIXME`；禁密钥字面量；禁 `LogTag.None`；Core 非 Host 不直读 `Time` |
 | 6 | **注释** | XML 注释 ≤4 行；类型块注释 ≤3 行；成员 ≤2 行（生成物豁免） |
 | 7 | **文档** | 相对链接有效；设计文档不写施工状态（`已交付/已实施/待提交/批次X`）；文档 ≤8 篇 / 2,000 行 |
 
@@ -44,7 +44,7 @@
 
 ## 五、反清单（不做的事）
 
-不自研 DI 容器/模块系统/作用域；不做泛型 FSM/事件总线/对象池框架；不做 UI 绑定代码生成；不做租约/代次/事务化热更；不做 ECS/DOTS；不重写服务端与共享包。完整 16 条见 01 §12。
+不自研 DI 容器/模块系统/作用域；不做泛型 FSM/事件总线/对象池框架；UI 只留绑定生成（`Editor/UiBindingGenerator.cs`），不做契约校验/预览工作台/样式表；不做租约/代次/事务化热更；不做 ECS/DOTS；不重写服务端与共享包。完整 16 条见 01 §12。
 
 ## 六、编辑器通道（必装 unity-pipeline）
 

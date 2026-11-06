@@ -25,15 +25,16 @@
 
 ---
 
-## 2. 运行期结构（5 件，≤ 800 行）
+## 2. 运行期结构（6 件，≤ 900 行）
 
 | 件 | 位置 | 行数预算 | 职责 |
 |---|---|---|---|
 | `LuaHost` | `Core/Lua` | ≤ 250 | `LuaEnv` 生命周期：Start / Reload / Dispose；装载 Lua 根目录；`main.lua` 执行；全局错误处理 |
 | `Bridge`（部分类） | `Game/Bridge` | ≤ 500（9 文件） | 把 C# 能力注册成 8 张 Lua 表；只做转发，不做缓存 |
-| `LuaPageProxy` | `Core/Lua` | ≤ 150 | 注入到页面的 `self.ui`；按 key 找控件并调用；缺件降级 |
+| `LuaPageProxy`（部分类） | `Core/Lua` | ≤ 200 × 2 文件 | 注入到页面的 `self.ui`；按 key 找控件并调用；缺件降级（基类 / 控件各一文件） |
+| `LuaPage` | `Core/Lua` | ≤ 120 | Lua 页实例：`require` + `new` + 生命周期转发 + 错误隔离 + 10 Hz 节拍 |
 | `LuaCallback` | `Core/Lua` | ≤ 80 | C# → Lua 回调：主线程、pcall、页面 token 校验、异常日志一次 |
-| `LuaScreen`（MonoBehaviour） | `Game/Ui` | ≤ 60 | 预制体上的 Lua 页宿主：创建页面实例、派发 `OnShow/OnHide/OnReveal/OnUpdate` |
+| `LuaScreen`（MonoBehaviour） | `Game/Ui` | ≤ 80 | 预制体上的 Lua 页宿主：建 `LuaPage`、转发 `OnShow/OnReveal/OnHide/OnUpdate` |
 
 **没有**：三张注册表、`RegistryFiller`、`LuaRegistryRefillService`、`LuaBehaviourAdapter`（257 行 + 生成 54 行）、`UIApiShim` 生成物、静态门面 `Bind(...)` 链。旧这套的价值是"环境重建后按表补注册"；新工程整包重载（§7），不需要增删注册。
 
@@ -56,7 +57,7 @@ UiHost → ScreenManager → 打开首屏 → LuaScreen: page = require(script):
 ### 3.1 `Bridge.ui` — 页面导航（唯一写者：C# `ScreenManager`）
 
 ```lua
-Bridge.ui.Show(page, data)        -- 入栈并显示（page = "UI.Page_Lobby"）
+Bridge.ui.Show(page, data)        -- 入栈并显示（page = "ui.Page_Lobby"）
 Bridge.ui.Replace(page, data)     -- 替换栈顶
 Bridge.ui.Back()                  -- 返回上一页（栈空 = 无操作）
 Bridge.ui.Close(page)             -- 关指定页

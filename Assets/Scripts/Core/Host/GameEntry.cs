@@ -17,6 +17,11 @@ namespace LiteGame.Core.Host
         private bool _active;
         private bool _tickFailed;
 
+        [SerializeField] private GameObject _uiRootPrefab;
+
+        /// <summary>UIRoot 预制体；由 Boot 场景的 GameEntry 序列化引用。</summary>
+        public GameObject UiRootPrefab => _uiRootPrefab;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetForEditorReload()
         {
@@ -27,7 +32,7 @@ namespace LiteGame.Core.Host
         {
             if (_booted)
             {
-                Log.Warn("检测到重复 GameEntry，已销毁", "GameEntry");
+                Log.Warning("检测到重复 GameEntry，已销毁", LogTag.Host);
                 Destroy(gameObject);
                 return;
             }
@@ -44,9 +49,11 @@ namespace LiteGame.Core.Host
             }
             catch (Exception exception)
             {
-                Log.Error(exception, "GameEntry");
+                Log.Error(exception, LogTag.Host);
                 BootstrapErrorPresenter.Show(exception);
-                _lifetime?.Cancel();
+                _lifetime.Cancel();
+                _lifetime.Dispose();
+                _lifetime = null;
                 _booted = false;
             }
         }
@@ -58,7 +65,7 @@ namespace LiteGame.Core.Host
                 return;
             }
 
-            _game.StartAsync(_lifetime.Token).Forget(exception => Log.Error(exception, "GameEntry"));
+            _game.StartAsync(_lifetime.Token).Forget(exception => Log.Error(exception, LogTag.Host));
         }
 
         private void Update()
@@ -75,7 +82,7 @@ namespace LiteGame.Core.Host
             catch (Exception exception)
             {
                 _tickFailed = true;
-                Log.Error(exception, "GameEntry");
+                Log.Error(exception, LogTag.Host);
             }
         }
 

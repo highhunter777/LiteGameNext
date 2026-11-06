@@ -52,5 +52,29 @@ namespace LiteGame.Tests.EditMode
             Assert.AreEqual("C:/default", config.LuaRoot);
             Assert.AreEqual(string.Empty, config.MetaServerUrl);
         }
+
+        [Test]
+        public void Load_ParsesLogLevel()
+        {
+            var config = LaunchConfig.Load(new[] { "-logLevel", "debug" }, "C:/default");
+
+            Assert.AreEqual(LogLevel.Debug, config.LogLevel);
+        }
+
+        [Test]
+        public void Load_InvalidLogLevel_UsesFallback()
+        {
+            var config = LaunchConfig.Load(new[] { "-logLevel", "Verbose" }, "C:/default", LogLevel.Warning);
+
+            Assert.AreEqual(LogLevel.Warning, config.LogLevel);
+        }
+
+        [Test]
+        public void Load_UndefinedLogLevel_UsesFallback()
+        {
+            var config = LaunchConfig.Load(new[] { "-logLevel", "99" }, "C:/default");
+
+            Assert.AreEqual(LogLevel.Info, config.LogLevel);
+        }
     }
 }

@@ -68,7 +68,7 @@ namespace LiteGame.Tests.EditMode
         {
             var bus = new EventBus();
             var calls = 0;
-            LogAssert.Expect(LogType.Error, new Regex("EventBus/Int32"));
+            LogAssert.Expect(LogType.Error, new Regex(@"\[EventBus\] Int32"));
             bus.Subscribe<int>(_ => throw new InvalidOperationException("boom"));
             bus.Subscribe<int>(_ => calls++);
             bus.Publish(1);
@@ -90,6 +90,38 @@ namespace LiteGame.Tests.EditMode
             bus.Publish(1);
 
             Assert.AreEqual(1, calls);
+        }
+
+        [Test]
+        public void ClearInsideHandler_KeepsSubscriptionAddedAfterClear()
+        {
+            var bus = new EventBus();
+            var calls = 0;
+            bus.Subscribe<int>(_ =>
+            {
+                calls++;
+                bus.Clear();
+                bus.Subscribe<int>(__ => calls += 100);
+            });
+            bus.Publish(1);
+
+            Assert.AreEqual(1, calls);
+
+            bus.Publish(1);
+            Assert.AreEqual(101, calls);
+        }
+
+        [Test]
+        public void ClearOutsidePublish_RemovesAllSubscriptions()
+        {
+            var bus = new EventBus();
+            var calls = 0;
+            bus.Subscribe<int>(_ => calls++);
+            bus.Clear();
+
+            bus.Publish(1);
+
+            Assert.AreEqual(0, calls);
         }
     }
 }

@@ -13,47 +13,46 @@ namespace LiteGame.Core.Logging
             _level = level;
         }
 
-        public static void Debug(string message, string tag = null)
+        public static void Debug(string message, LogTag tag)
         {
             Write(LogLevel.Debug, message, tag);
         }
 
-        public static void Info(string message, string tag = null)
+        public static void Info(string message, LogTag tag)
         {
             Write(LogLevel.Info, message, tag);
         }
 
-        public static void Warn(string message, string tag = null)
+        public static void Warning(string message, LogTag tag)
         {
-            Write(LogLevel.Warn, message, tag);
+            Write(LogLevel.Warning, message, tag);
         }
 
-        public static void Error(string message, string tag = null)
+        public static void Error(string message, LogTag tag)
         {
             Write(LogLevel.Error, message, tag);
         }
 
-        public static void Error(Exception exception, string tag = null)
+        /// <summary>异常按错误级记录；detail 打印在异常栈之前（页面名/信号类型）。</summary>
+        public static void Error(Exception exception, LogTag tag, string detail = null)
         {
-            Write(LogLevel.Error, exception == null ? "null exception" : exception.ToString(), tag);
+            var stack = exception == null ? "null exception" : exception.ToString();
+            Write(LogLevel.Error, string.IsNullOrEmpty(detail) ? stack : detail + "\n" + stack, tag);
         }
 
-        private static void Write(LogLevel level, string message, string tag)
+        private static void Write(LogLevel level, string message, LogTag tag)
         {
             if (level < _level)
             {
                 return;
             }
 
-            var text = message ?? "(null)";
-            if (!string.IsNullOrEmpty(tag))
-            {
-                text = "[" + tag + "] " + text;
-            }
-
+            // None 是"未分类"占位值；输出成 Unclassified 便于在控制台一眼看出漏传标签。
+            var name = tag == LogTag.None ? "Unclassified" : tag.ToString();
+            var text = "[" + name + "] " + (message ?? "(null)");
             switch (level)
             {
-                case LogLevel.Warn:
+                case LogLevel.Warning:
                     UnityEngine.Debug.LogWarning(text);
                     break;
                 case LogLevel.Error:

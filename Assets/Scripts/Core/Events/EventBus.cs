@@ -61,7 +61,6 @@ namespace LiteGame.Core.Events
         {
             private readonly List<Slot> _slots = new List<Slot>(4);
             private int _publishing;
-            private bool _clearPending;
 
             public IDisposable Subscribe(Action<T> handler)
             {
@@ -81,6 +80,8 @@ namespace LiteGame.Core.Events
                 _publishing++;
                 try
                 {
+                    // Clear 期间 List 不再被整体清空，Count 保持不变；
+                    // i < _slots.Count 仅作防御。
                     for (var i = 0; i < count && i < _slots.Count; i++)
                     {
                         var slot = _slots[i];
@@ -95,7 +96,7 @@ namespace LiteGame.Core.Events
                         }
                         catch (Exception exception)
                         {
-                            Log.Error(exception, "EventBus/" + typeof(T).Name);
+                            Log.Error(exception, LogTag.EventBus, typeof(T).Name);
                         }
                     }
                 }
@@ -116,13 +117,12 @@ namespace LiteGame.Core.Events
                     _slots[i].Active = false;
                 }
 
-                if (_publishing > 0)
+                // 非派发期可直接清空；派发期留给 Sweep 按 Active 移除，
+                // 这样 Clear 之后同周期新订阅的 Slot（Active=true）会被保留。
+                if (_publishing == 0)
                 {
-                    _clearPending = true;
-                    return;
+                    _slots.Clear();
                 }
-
-                _slots.Clear();
             }
 
             private void Unsubscribe(Slot slot)
@@ -141,13 +141,7 @@ namespace LiteGame.Core.Events
 
             private void Sweep()
             {
-                if (_clearPending)
-                {
-                    _slots.Clear();
-                    _clearPending = false;
-                    return;
-                }
-
+                // 只移除失效 Slot；派发中 Clear 后新订阅的 Active=true 会留下。
                 for (var i = _slots.Count - 1; i >= 0; i--)
                 {
                     if (!_slots[i].Active)

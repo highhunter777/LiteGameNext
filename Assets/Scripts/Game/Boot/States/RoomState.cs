@@ -8,7 +8,7 @@ namespace LiteGame.Boot.States
     {
         public UniTask EnterAsync()
         {
-            Log.Info("进入 Room（P0 占位）", "RoomState");
+            Log.Info("进入 Room（P0 占位）", LogTag.Flow);
             return UniTask.CompletedTask;
         }
 

@@ -5,7 +5,7 @@ namespace LiteGame.Core.Logging
     {
         Debug = 0,
         Info = 1,
-        Warn = 2,
+        Warning = 2,
         Error = 3,
     }
 }
