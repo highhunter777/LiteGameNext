@@ -47,6 +47,7 @@ FORBIDDEN_CALLS = (("GameObject.Find(", "改走显式引用/SceneRefs，禁按�
 
 # ---- 卫生 ----
 DEBUG_LOG = re.compile(r"\bDebug\.Log(Warning|Error|Format|Assert)?\s*\(")
+LOG_SINK = "Assets/Scripts/Core/Logging/Log.cs"   # 日志门面本身，唯一允许调用 Debug.Log 的文件
 EMPTY_CATCH = re.compile(r"catch\s*(?:\([^)]*\))?\s*\{\s*\}")
 TODO_MARK = re.compile(r"\b(TODO|FIXME)\b")
 SECRET_PATTERNS = (
@@ -270,8 +271,9 @@ def check_hygiene() -> Result:
             continue
         scanned += 1
         text = read_text(path)
-        for match in DEBUG_LOG.finditer(text):
-            r.fail(f"{posix}:{line_of(text, match.start())}", "生产路径禁 Debug.Log*，改用 Log.*（01 §10）")
+        if posix != LOG_SINK:
+            for match in DEBUG_LOG.finditer(text):
+                r.fail(f"{posix}:{line_of(text, match.start())}", "生产路径禁 Debug.Log*，改用 Log.*（01 §10）")
         for match in EMPTY_CATCH.finditer(text):
             r.fail(f"{posix}:{line_of(text, match.start())}", "空 catch —— 要么处理要么抛出（01 §10）")
         for match in TODO_MARK.finditer(text):
