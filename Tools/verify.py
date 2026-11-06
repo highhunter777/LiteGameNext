@@ -162,7 +162,8 @@ def check_budget() -> Result:
     files = list(runtime_files())
     total_lines = sum(len(read_text(p).splitlines()) for p in files)
 
-    asmdefs = [p for p in (ROOT / "Assets").rglob("*.asmdef") if p.is_file()] if (ROOT / "Assets").exists() else []
+    # 只统计自研程序集（Assets/Scripts 下）；第三方包自带的 asmdef 不计入预算
+    asmdefs = [p for p in SCRIPTS.rglob("*.asmdef") if p.is_file()] if SCRIPTS.exists() else []
     interfaces = 0
     iface_re = re.compile(r"^\s*(?:public|internal)?\s*(?:partial\s+)?interface\s+\w+")
     for path in files:

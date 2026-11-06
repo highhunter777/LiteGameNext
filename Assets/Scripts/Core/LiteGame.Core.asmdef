@@ -1,7 +1,10 @@
 {
     "name": "LiteGame.Core",
     "rootNamespace": "LiteGame.Core",
-    "references": [],
+    "references": [
+        "UniTask",
+        "xLuaMain"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
